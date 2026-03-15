@@ -34,4 +34,4 @@ jobs:
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
         run: |
           # This command tells Python to run the sync logic directly
-          python -m eufy_garmin_sync
+          python eufy_garmin_sync.py
