@@ -1,46 +1,47 @@
 import os
-import asyncio
-# Fixed the import name for the 2026 version of the library
-from eufylife_ble_client import EufyLifeBLEClient
+import requests
 from garminconnect import Garmin
 
-async def main():
-    # 1. Get your passwords from GitHub Secrets
-    EUFY_EMAIL = os.getenv("EUFY_EMAIL")
-    EUFY_PASS = os.getenv("EUFY_PASSWORD")
-    GARMIN_EMAIL = os.getenv("GARMIN_EMAIL")
-    GARMIN_PASS = os.getenv("GARMIN_PASSWORD")
-
-    print("--- STEP 1: Connecting to Eufy Cloud ---")
-    # Using the correct client class name
+def get_eufy_weight(email, password):
+    print("Connecting to Eufy Cloud...")
+    # This is the direct 2026 Eufy API endpoint for scale data
+    login_url = "https://mysecurity.eufylife.com/api/v1/passport/login"
+    payload = {"email": email, "password": password, "type": 1}
+    
     try:
-        eufy_client = EufyLifeBLEClient(EUFY_EMAIL, EUFY_PASS)
-        # In 2026, we just need to initialize; the library handles cloud fetch
-        print("Connected to Eufy. Fetching weight...")
+        # 1. Login to Eufy
+        response = requests.post(login_url, json=payload).json()
+        token = response['data']['auth_token']
         
-        # This is a dummy weight for the test - we'll get real data once connected
-        # Replace 75.0 with your actual weight if you want to test the sync now
-        weight_to_sync = 75.0 
-        print(f"Target weight to sync: {weight_to_sync} kg")
-
+        # 2. Get latest weight entry
+        data_url = "https://mysecurity.eufylife.com/api/v1/app/device/last_device_data"
+        headers = {"X-Auth-Token": token}
+        weight_data = requests.get(data_url, headers=headers).json()
+        
+        # Extract weight (usually in kg)
+        weight = float(weight_data['data']['weight']) / 100 # Converting from grams if needed
+        return weight
     except Exception as e:
-        print(f"Eufy Error: {e}")
-        return
+        print(f"Eufy Fetch Failed: {e}")
+        return None
 
-    print("--- STEP 2: Connecting to Garmin ---")
-    try:
-        # Garmin's 2026 API is strict; we use the standard login first
-        garmin_client = Garmin(GARMIN_EMAIL, GARMIN_PASS)
-        garmin_client.login()
-        print("Successfully logged into Garmin!")
-        
-        # The 'magic' command to add weight to Garmin
-        garmin_client.add_body_composition(weight=weight_to_sync)
-        print("✅ SUCCESS! Weight synced to Garmin Connect.")
-        
-    except Exception as e:
-        print(f"Garmin Error: {e}")
-        print("Tip: If this failed, check if you have Two-Factor Auth (2FA) on Garmin.")
+def main():
+    eufy_user = os.getenv("EUFY_EMAIL")
+    eufy_pass = os.getenv("EUFY_PASSWORD")
+    garmin_user = os.getenv("GARMIN_EMAIL")
+    garmin_pass = os.getenv("GARMIN_PASSWORD")
+
+    weight = get_eufy_weight(eufy_user, eufy_pass)
+    
+    if weight:
+        print(f"Found weight: {weight} kg. Syncing to Garmin...")
+        try:
+            client = Garmin(garmin_user, garmin_pass)
+            client.login()
+            client.add_body_composition(weight=weight)
+            print("✅ SUCCESS! Check your Garmin app.")
+        except Exception as e:
+            print(f"Garmin Error: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
