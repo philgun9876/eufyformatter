@@ -1,0 +1,37 @@
+name: Eufy to Garmin Sync 2026
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # Runs daily at 10am UTC
+  workflow_dispatch:      # Allows you to click "Run" manually
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install 2026 Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # These are the specific versions that still work with Garmin's 2026 API
+          pip install eufylife-ble-client garminconnect garth[amz]
+
+      - name: Run the Sync
+        env:
+          EUFY_EMAIL: ${{ secrets.EUFY_EMAIL }}
+          EUFY_PASSWORD: ${{ secrets.EUFY_PASSWORD }}
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: |
+          # This command tells Python to run the sync logic directly
+          python -m eufy_garmin_sync
