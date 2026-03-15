@@ -33,5 +33,6 @@ jobs:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
         run: |
-          # This command tells Python to run the sync logic directly
-          python eufy_garmin_sync.py
+          # This command finds ANY .py file in your repo and tries to run it
+          # It's a "brute force" way to fix the 'No such file' error
+          python $(find . -name "*.py" | head -n 1)
